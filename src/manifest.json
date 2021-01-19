@@ -1,0 +1,21 @@
+{
+    "name": "LeetCode Sync",
+    "version": "0.0",
+    "description": "Sets up the LeetCode Sync GitHub Action.",
+    "permissions": ["storage", "declarativeContent", "tabs", "cookies", "https://*.leetcode.com/", "http://leetcode.com/", "https://leetcode.com/"],
+    "background": {
+      "scripts": ["background.bundle.js"],
+      "persistent": false
+    },
+    "page_action": {
+      "default_popup": "popup.html",
+      "default_icon": {
+        "128": "images/icon128.png"
+      }
+    },
+    "icons": {
+      "128": "images/icon128.png"
+    },
+    "manifest_version": 2,
+    "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'"
+  }
