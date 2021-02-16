@@ -4,7 +4,7 @@
     "description": "Sets up the LeetCode Sync GitHub Action.",
     "permissions": ["storage", "declarativeContent", "tabs", "cookies", "https://*.leetcode.com/", "http://leetcode.com/", "https://leetcode.com/"],
     "background": {
-      "scripts": ["background.bundle.js"],
+      "scripts": ["background.js"],
       "persistent": false
     },
     "page_action": {

@@ -20,15 +20,23 @@
   },
   "homepage": "https://github.com/joshcai/leetcode-sync-chrome#readme",
   "devDependencies": {
+    "@babel/core": "^7.12.16",
+    "babel-loader": "^8.2.2",
     "circular-dependency-plugin": "^5.2.2",
     "clean-webpack-plugin": "^3.0.0",
     "copy-webpack-plugin": "^7.0.0",
+    "css-loader": "^5.0.2",
+    "html-webpack-plugin": "^5.1.0",
+    "style-loader": "^2.0.0",
+    "vue-loader": "^15.9.6",
+    "vue-template-compiler": "^2.6.12",
     "webpack": "^5.15.0",
     "webpack-cli": "^4.3.1"
   },
   "dependencies": {
     "@octokit/rest": "^18.0.12",
     "buffer": "^6.0.3",
-    "tweetsodium": "0.0.5"
+    "tweetsodium": "0.0.5",
+    "vue": "^2.6.12"
   }
 }

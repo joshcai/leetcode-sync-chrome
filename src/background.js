@@ -14,7 +14,7 @@ function getCookie(name){
                 resolve(cookie.value);
             }
             else {
-                console.log('Can\'t get cookie! Check the name!')
+                console.log('Can\'t get cookie! Check the name!');
                 reject(0);
             }
         })
@@ -29,10 +29,16 @@ function syncGet(names) {
                     resolve(result);
                 }
                 else {
-                    console.log('Can\'t get values! Check the names!')
+                    console.log('Can\'t get values! Check the names!');
                     reject(0);
                 }
         })
+    });
+}
+
+function syncSet(values) {
+    return new Promise((resolve, reject) => {
+        chrome.storage.sync.set(values, () => resolve());
     });
 }
 
@@ -58,7 +64,50 @@ function encryptSecret(value, publicKey) {
     return Buffer.from(encryptedBytes).toString('base64');
 }
 
-async function createProject() {
+function createOctokit(accessToken) {
+    return new Octokit({
+        auth: accessToken,
+        userAgent: 'LeetCode Sync Chrome v0.0',
+    });
+}
+
+async function authorizeHandler(request, sendResponse) {
+    const octokit = createOctokit(request.token);
+    const user = await octokit.users.getAuthenticated();
+    console.log(user);
+    const username = user.data.login;
+    await syncSet({
+        username: username,
+        accessToken: request.token,
+    });
+    sendResponse({username: username});
+};
+
+async function createHandler(request, sendResponse) {
+    const result = await syncGet(['username', 'accessToken']);
+    const owner = result.username;
+    const repo = request.repo;
+    const accessToken = result.accessToken;
+    if (owner == null || repo == null || accessToken == null) {
+        console.log('error getting values');
+        return;
+    }
+
+    const octokit = createOctokit(accessToken);
+    await octokit.repos.createUsingTemplate({
+        template_owner: 'joshcai',
+        template_repo: 'leetcode-sync-template',
+        name: repo,
+        private: true,
+    });
+
+    await syncSet({repo: repo});
+    await updateSecrets(octokit);
+
+    sendResponse({success: true});
+};
+
+async function syncHandler(request, sendResponse) {
     const result = await syncGet(['username', 'repo', 'accessToken']);
     const owner = result.username;
     const repo = result.repo;
@@ -67,30 +116,71 @@ async function createProject() {
         console.log('error getting values');
         return;
     }
+    const octokit = createOctokit(accessToken);
+    const repoInfo = await octokit.repos.get({
+        owner: owner,
+        repo: repo,
+      });
+    const defaultBranch = repoInfo.data.default_branch;
 
-    const octokit = new Octokit({
-        auth: accessToken,
-        userAgent: 'LeetCode Sync Chrome v0.0',
-    });
-
-    await octokit.repos.createUsingTemplate({
-        template_owner: 'joshcai',
-        template_repo: 'leetcode-sync-template',
-        name: repo,
-        private: true,
-    });
     await updateSecrets(octokit);
-}
+
+    const resp = await octokit.actions.createWorkflowDispatch({
+        owner,
+        repo,
+        workflow_id: 'sync_leetcode.yml',
+        ref: defaultBranch,
+    });
+    console.log(resp)
+
+    sendResponse({success: true});
+};
+
+async function linkHandler(request, sendResponse) {
+    const result = await syncGet(['username', 'repo', 'accessToken']);
+    const owner = result.username;
+    const repo = request.repo;
+    const accessToken = result.accessToken;
+    if (owner == null || repo == null || accessToken == null) {
+        console.log('error getting values');
+        return;
+    }
+    const octokit = createOctokit(accessToken);
+    // Get repo information to see if the repo exists.
+    await octokit.repos.get({
+        owner: owner,
+        repo: repo,
+    });
+
+    await syncSet({repo: repo});
+    await updateSecrets(octokit);
+
+    sendResponse({success: true});
+};
+
+
+const MESSAGE_HANDLERS = {
+    authorize: authorizeHandler,
+    create: createHandler,
+    sync: syncHandler,
+    link: linkHandler,
+};
 
 chrome.runtime.onMessage.addListener(
-    async function(request, sender, sendResponse) {
-      if (request.action == 'create') {
-        await createProject();
-        sendResponse({});
-      }
+    // We can't wrap the top function with async since it forces it to
+    // return a `Promise`, but we want to return `true` to indicate that
+    // `sendResponse` will happen asynchronously.
+    function(request, sender, sendResponse) {
+        (async () => {
+            try {
+                await MESSAGE_HANDLERS[request.action](request, sendResponse);
+            } catch (error) {
+                sendResponse({error: error.message});
+            };
+        })();
+        return true;
     }
 );
-
 
 async function updateSecrets(octokit) {
     const result = await syncGet(['username', 'repo', 'accessToken']);
@@ -120,7 +210,6 @@ async function updateSecrets(octokit) {
     }
     await updateSecret(context, 'LEETCODE_SESSION', leetcodeSession);
     await updateSecret(context, 'LEETCODE_CSRF_TOKEN', csrfToken);
-    console.log('secrets updated');
 }
 
 chrome.runtime.onInstalled.addListener(function() {
@@ -148,11 +237,7 @@ chrome.runtime.onInstalled.addListener(function() {
             console.log('error getting values');
             return;
         }
-
-        const octokit = new Octokit({
-            auth: accessToken,
-            userAgent: 'LeetCode Sync Chrome v0.0',
-        });
+        const octokit = createOctokit(accessToken);
         await updateSecrets(octokit);
         console.log('success!'); 
     }
