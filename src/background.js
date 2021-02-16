@@ -67,14 +67,13 @@ function encryptSecret(value, publicKey) {
 function createOctokit(accessToken) {
     return new Octokit({
         auth: accessToken,
-        userAgent: 'LeetCode Sync Chrome v0.0',
+        userAgent: 'LeetCode Sync Chrome v0.0.1',
     });
 }
 
 async function authorizeHandler(request, sendResponse) {
     const octokit = createOctokit(request.token);
     const user = await octokit.users.getAuthenticated();
-    console.log(user);
     const username = user.data.login;
     await syncSet({
         username: username,
@@ -131,7 +130,6 @@ async function syncHandler(request, sendResponse) {
         workflow_id: 'sync_leetcode.yml',
         ref: defaultBranch,
     });
-    console.log(resp)
 
     sendResponse({success: true});
 };
@@ -188,9 +186,6 @@ async function updateSecrets(octokit) {
     const repo = result.repo;
     const accessToken = result.accessToken;
     if (owner == null || repo == null || accessToken == null) {
-        console.log(owner);
-        console.log(repo);
-        console.log(accessToken);
         console.log('error getting values');
         return;
     }
@@ -231,14 +226,9 @@ chrome.runtime.onInstalled.addListener(function() {
         const repo = result.repo;
         const accessToken = result.accessToken;
         if (owner == null || repo == null || accessToken == null) {
-            console.log(owner);
-            console.log(repo);
-            console.log(accessToken);
-            console.log('error getting values');
             return;
         }
         const octokit = createOctokit(accessToken);
         await updateSecrets(octokit);
-        console.log('success!'); 
     }
   })

@@ -7,9 +7,22 @@
     text-align: center;
 }
 
+#message {
+    margin-top: 10px;
+}
+
 #error {
     color: rgb(165, 7, 7);
     margin-top: 10px;
+}
+
+.button-wrapper {
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+label {
+    font-weight: bold;
 }
 
 </style>
@@ -17,9 +30,10 @@
 <template>
     <div id="popup" v-if="componentLoaded">
         <div id="setup" v-if="mode === MODES.AUTHORIZE">
-            <a href="https://github.com/settings/tokens/new" target="_blank">Create Token</a>
+            <a href="https://github.com/settings/tokens/new" target="_blank">Create Token on GitHub</a>
             <br>
-            <label for="token">GitHub Personal Access Token:</label>
+            <p>Make sure to give 'repo' permission when creating the token.</p>
+            <label for="token">GitHub Personal Access Token</label>
             <input v-model="token" type="text" name="token" :disabled="loading"><br><br>
             <div class="button-wrapper">
                 <button v-on:click="setToken">Submit</button>
@@ -29,8 +43,9 @@
             </div>
         </div>
         <div id="setup" v-if="mode === MODES.SETUP">
-            {{ username }}
-            <label for="repo">Repo Name:</label>
+            <label for="user">User</label>
+            <input v-model="username" type="text" id="user" name="user" disabled><br><br>
+            <label for="repo">Repo Name</label>
             <input v-model="repo" type="text" id="repo" name="repo" :disabled="loading"><br><br>
             <div class="button-wrapper">
                 <button v-on:click="create">Create</button>
@@ -40,13 +55,17 @@
             </div>
         </div>
         <div id="sync" v-if="mode === MODES.SYNC">
-            <h3>Repo: {{ username }}/{{ repo }}</h3>
+            <h3>Repo: <a :href="getRepoLink()" target="_blank">{{ username }}/{{ repo }}</a></h3>
+            <p><a :href="getActionsLink()" target="_blank">Actions</a></p>
             <div class="button-wrapper">
                 <button v-on:click="sync">Sync</button>
             </div>
             <div class="button-wrapper">
                 <button v-on:click="changeMode(MODES.AUTHORIZE)">Reset Config</button>
             </div>
+        </div>
+        <div id="message" v-if="message">
+            {{ message }}
         </div>
         <div id="error" v-if="error">
             <strong>Error:</strong> {{ error }}
@@ -74,6 +93,7 @@ export default {
         repo: 'leetcode-solutions',
         error: '',
         loading: false,
+        message: '',
     }
   },
   created: function () {
@@ -95,13 +115,21 @@ export default {
     });
   },
   methods: {
+    getRepoLink: function() {
+        return 'https://github.com/' + this.username + '/' + this.repo;
+    },
+    getActionsLink: function() {
+        return this.getRepoLink() + '/actions';
+    },
     changeMode: function(mode) {
         this.error = '';
+        this.message = '';
         this.loading = false;
         this.mode = mode;
     },
     sendMessage: function(data, callback) {
         this.error = '';
+        this.message = '';
         this.loading = true;
         chrome.runtime.sendMessage(data, (response) => {
             this.loading = false;
@@ -135,6 +163,7 @@ export default {
     },
     sync: function (event) {
         this.sendMessage({action: 'sync'}, (response) => {
+            this.message = 'Workflow action triggered, check status in Actions link';
         });
     },
   }
